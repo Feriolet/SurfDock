@@ -41,7 +41,7 @@ Last Tested: 23 February 2026
 git clone https://github.com/Feriolet/SurfDock
 cd SurfDock
 docker build --no-cache --platform linux/amd64 -t docker_surfdock .
-docker run --platform linux/amd64 --rm -it easydock
+docker run --platform linux/amd64 --rm -it docker_surfdock
 ```
 
 ### Usage
