@@ -44,12 +44,35 @@ docker build --no-cache --platform linux/amd64 -t docker_surfdock .
 docker run --platform linux/amd64 --rm -it easydock
 ```
 
-Running the docking example
+### Usage
+```bash
+usage: run_dock_easydock.py [-h] [-i FILENAME] [-c FILENAME] [-o FILENAME]
+
+options:
+  -h, --help            show this help message and exit
+  -i FILENAME, --input FILENAME
+                        input file with molecules (SDF) to be docked.
+  -c FILENAME, --config FILENAME
+                        YAML file with parameters used by docking program. See documentation for the format.
+  -o FILENAME, --output FILENAME
+                        output folder for SurfDock
 ```
+
+### Running the docking example
+```bash
 cd /app/SurfDock/docker_example
 
 python ../SurfDock/bash_scripts/test_scripts/run_dock_easydock.py -i 1a0q_docking_lib.sdf -c config.yaml -o output
 ```
+
+where config.yaml consists of:
+
+```txt
+protein: 1a0q_protein.pdb # protein target to be docked
+ligand: 1a0q_ligand.sdf # ligand that is native to the protein target (protein MUST be holo, not apo)
+processing_unit: cpu # (choose either gpu or cpu)
+```
+
 ## Section 1 : Setup Environment
 You can follow the instructions to setup the environment
 Our test env Info bellow

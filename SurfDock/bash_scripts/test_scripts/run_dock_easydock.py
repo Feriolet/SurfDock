@@ -15,7 +15,7 @@ def filepath_type(x):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--input', metavar='FILENAME', required=False, type=filepath_type,
-                        help='input file with molecules (SDF).')
+                        help='input file with molecules (SDF) to be docked.')
     parser.add_argument('-c', '--config', metavar='FILENAME', required=False, type=filepath_type,
                         help='YAML file with parameters used by docking program. See documentation for the format.')
     parser.add_argument('-o', '--output', metavar='FILENAME', required=False, type=filepath_type,
