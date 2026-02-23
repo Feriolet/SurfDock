@@ -27,11 +27,9 @@ model_temp="$(dirname "$(dirname "$(dirname "$path")")")"
 
 export precomputed_arrays="${temp}/precomputed/precomputed_arrays"
 ## Please set the GPU devices you want to use
-gpu_string="7"
-echo "Using GPU devices: ${gpu_string}"
-IFS=',' read -ra gpu_array <<< "$gpu_string"
-NUM_GPUS=${#gpu_array[@]}
-export CUDA_VISIBLE_DEVICES=${gpu_string}
+gpu_string="cpu"
+echo "Using CPU device"
+
 ## Please set the main Parameters
 main_process_port=2957${gpu_array[-1]}
 ## Please set the project name
@@ -149,10 +147,7 @@ for i in ${dist_arrays[@]}
 do
 mdn_dist_threshold_test=${i}
 
-command=`accelerate launch \
---multi_gpu \
---main_process_port ${main_process_port} \
---num_processes ${NUM_GPUS} \
+command=`python \
 ${SurfDockdir}/inference_accelerate.py \
 --data_csv ${test_data_csv} \
 --model_dir ${diffusion_model_dir} \
@@ -185,7 +180,7 @@ echo '---------------- Step4 : Start Rescoring the Pose For Screening  ---------
 # data_dir=${SurfDockdir}/data/Screen_sample_dirs/test_samples
 out_csv_file=${out_csv_dir}/score_inplace.csv
 
-command=` python \
+command=`accelerate launch \
 ${SurfDockdir}/inference_utils/construct_csv_input.py \
 --data_dir ${data_dir} \
 --surface_out_dir ${surface_out_dir} \
@@ -208,9 +203,6 @@ mdn_dist_threshold_test=${i}
 echo mdn_dist_threshold_test : ${mdn_dist_threshold_test}
 
 command=`accelerate launch \
---multi_gpu \
---main_process_port ${main_process_port} \
---num_processes 1 \
 ${SurfDockdir}/evaluate_score_in_place.py \
 --data_csv ${test_data_csv} \
 --confidence_model_dir ${confidence_model_base_dir} \
