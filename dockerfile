@@ -14,9 +14,8 @@ RUN conda env create -f environment.yaml
 
 RUN echo "conda activate SurfDock" >> ~/.bashrc
 
-WORKDIR /app/SurfDock/comp_surface/tools
-ADD APBS_PDB2PQR.tar.gz /app/SurfDock/comp_surface/tools
-ADD msms_i86_64Linux2_2.6.1.tar.gz /app/SurfDock/comp_surface/tools
+ADD comp_surface/tools/APBS_PDB2PQR.tar.gz /app/SurfDock/comp_surface/tools
+ADD comp_surface/tools/msms_i86_64Linux2_2.6.1.tar.gz /app/SurfDock/comp_surface/tools
 
 WORKDIR /app/SurfDock
 RUN git clone https://github.com/facebookresearch/esm
