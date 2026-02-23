@@ -27,7 +27,29 @@ If you have any question, feel free to open an issue or reach out to us: [caodh@
 
 ![Alt Text](figs/docking.gif)
 
+## Fork Message
+Hi! This forked repository is made to create a docker for SurfDock. Please let me know if you have any issue installing the docker (vyap004@e.ntu.edu.sg).
 
+```text
+System Specification
+
+OS: MacOS M1 (14.6.1)
+Last Tested: 23 February 2026
+```
+
+```bash
+git clone https://github.com/Feriolet/SurfDock
+cd SurfDock
+docker build --no-cache --platform linux/amd64 -t docker_surfdock .
+docker run --platform linux/amd64 --rm -it easydock
+```
+
+Running the docking example
+```
+cd /app/SurfDock/docker_example
+
+python ../SurfDock/bash_scripts/test_scripts/run_dock_easydock.py -i 1a0q_docking_lib.sdf -c config.yaml -o output
+```
 ## Section 1 : Setup Environment
 You can follow the instructions to setup the environment
 Our test env Info bellow
