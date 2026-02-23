@@ -4,7 +4,7 @@ WORKDIR /app
 
 RUN apt-get update && \
     apt-get install --no-install-recommends --yes \
-    gcc build-essential git wget tar && \
+    gcc build-essential git wget && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -14,11 +14,11 @@ RUN conda env create -f environment.yaml
 
 RUN echo "conda activate SurfDock" >> ~/.bashrc
 
-WORKDIR "/app/SurfDock/comp_surface/tools"
-RUN tar -xzvf  APBS_PDB2PQR.tar.gz
-RUN tar -xzvf msms_i86_64Linux2_2.6.1.tar.gz
+WORKDIR /app/SurfDock/comp_surface/tools
+ADD APBS_PDB2PQR.tar.gz /app/SurfDock/comp_surface/tools
+ADD msms_i86_64Linux2_2.6.1.tar.gz /app/SurfDock/comp_surface/tools
 
-WORKDIR "/app/SurfDock/"
+WORKDIR /app/SurfDock
 RUN git clone https://github.com/facebookresearch/esm
 
 
