@@ -4,7 +4,7 @@ WORKDIR /app
 
 RUN apt-get update && \
     apt-get install --no-install-recommends --yes \
-    gcc build-essential git wget && \
+    gcc build-essential git wget tar && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
