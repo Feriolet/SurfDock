@@ -30,8 +30,6 @@ export precomputed_arrays="${temp}/precomputed/precomputed_arrays"
 gpu_string="cpu"
 echo "Using CPU device"
 
-## Please set the main Parameters
-main_process_port=2957${gpu_array[-1]}
 ## Please set the project name
 project_name='SurfDock_easydock'
 # /home/caoduanhua/NM_submit_code/SurfDock
