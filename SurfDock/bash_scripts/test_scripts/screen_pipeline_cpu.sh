@@ -160,8 +160,8 @@ ${SurfDockdir}/inference_accelerate.py \
 --out_dir ${docking_out_dir} \
 --batch_size 400 \
 --batch_size_molecule 10 \
---samples_per_complex 40 \
---save_docking_result_number 40 \
+--samples_per_complex $3 \
+--save_docking_result_number $4 \
 --head_index  0 \
 --tail_index 10000 \
 --inference_mode Screen \
