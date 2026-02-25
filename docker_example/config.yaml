@@ -1,3 +1,5 @@
 protein: 1a0q_protein.pdb
 ligand: 1a0q_ligand.sdf
 processing_unit: cpu
+n_gen_poses: 40
+n_save_poses: 10
