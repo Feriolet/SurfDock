@@ -364,6 +364,7 @@ dependencies:
       - prody==2.6.1
       - propcache==0.3.2
       - protobuf==4.25.8
+      - pyarrow
       - pyg-lib==0.4.0+pt27cu128
       - https://github.com/nuvolos-cloud/PyMesh/releases/download/v0.3.1/pymesh2-0.3.1-cp310-cp310-linux_x86_64.whl
       - pymsmt==22.0
