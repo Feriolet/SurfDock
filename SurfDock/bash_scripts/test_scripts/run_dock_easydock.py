@@ -4,7 +4,9 @@ import argparse
 from pathlib import Path
 import shutil
 import yaml
-
+import pandas as pd
+import rdkit
+from rdkit import Chem
 
 def filepath_type(x):
     if x:
@@ -12,13 +14,82 @@ def filepath_type(x):
     else:
         return x
 
+def prepare_protein_ligand_for_surfdock(protein_fname: str, ligand_fname: str) -> None:
+
+    current_dir = Path(__file__)
+    surfdock_dir = current_dir.parent.parent.parent
+
+    data_dir= Path(f'{surfdock_dir}/data/Screen_sample_dirs/easydock_samples')
+    if not data_dir.is_dir():
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+    if not protein_fname.is_file():
+        raise TypeError('protein fname does not exist')
+
+    if protein_fname.suffix != '.pdb':
+        raise TypeError('protein need to be in PDB format')
+    
+    protein_surfdock_dir = Path(data_dir).joinpath(protein_fname.stem)
+    protein_surfdock_dir.mkdir(parents=True, exist_ok=True)
+
+    shutil.copyfile(str(protein_fname), str(protein_surfdock_dir / protein_fname.stem) + '_protein_processed.pdb')
+
+    if not ligand_fname.is_file():
+        raise TypeError('ligand fname does not exist')
+
+    if ligand_fname.suffix != '.sdf':
+        raise TypeError('ligand need to be in SDF format')
+
+    shutil.copyfile(str(ligand_fname), str(protein_surfdock_dir / protein_fname.stem) + '_ligand.sdf')
+
+
+def parse_surfdock_mol_df(mol_series: pd.Series) -> Chem.Mol:
+
+    sdf_path = Path(mol_series['pose_file_path'].split('_', 1)[-1])
+    if not sdf_path.is_file():
+        return None
+
+    mol = Chem.SDMolSupplier(str(sdf_path))[0]
+    if not isinstance(mol, Chem.Mol):
+        return None
+    
+    mol.SetProp('pose_prediction_confidence', str(mol_series['pose_prediction_confidence(for pose rank)']))
+    mol.SetProp('screen_confidence', str(mol_series['screen_confidence(for molecule rank)']))
+    mol.SetProp('pose_rank', str(mol_series['pose_rank']))
+
+    return mol
+
+
+def analyse_output(output_folder: str) -> None:
+
+    output_path = Path(output_folder)
+    output_csv_fname = output_path.joinpath(OUTPUT_CSV_FNAME)
+
+    if not output_csv_fname.is_file():
+        raise FileNotFoundError('SurfDock output is not detected.')
+    
+    surfdock_output_df = pd.read_csv(output_csv_fname, engine='pyarrow')
+    surfdock_output_df_grouped = surfdock_output_df.groupby('molecule_name')
+    
+    mol_l = []
+    for mol_name_key, df_by_mol_name in surfdock_output_df_grouped:
+        mol_l += list(df_by_mol_name.sort_values(by=['pose_rank']).apply(parse_surfdock_mol_df, axis=1))
+    
+    with Chem.SDWriter(str(output_path.joinpath('easydock_output.sdf'))) as w:
+        for m in mol_l:
+            w.write(m)
+
+
 if __name__ == '__main__':
+    DEFAULT_NPOSE_DOCKING = 40
+    OUTPUT_CSV_FNAME = 'score_inplace_confidence.csv'
+
     parser = argparse.ArgumentParser()
-    parser.add_argument('-i', '--input', metavar='FILENAME', required=False, type=filepath_type,
-                        help='input file with molecules (SDF) to be docked.')
-    parser.add_argument('-c', '--config', metavar='FILENAME', required=False, type=filepath_type,
+    parser.add_argument('-i', '--input', metavar='FILENAME', required=True, type=filepath_type,
+                        help='input file with molecules (SDF).')
+    parser.add_argument('-c', '--config', metavar='FILENAME', required=True, type=filepath_type,
                         help='YAML file with parameters used by docking program. See documentation for the format.')
-    parser.add_argument('-o', '--output', metavar='FILENAME', required=False, type=filepath_type,
+    parser.add_argument('-o', '--output', metavar='FILENAME', required=True, type=filepath_type,
                         help='output folder for SurfDock')
     
     args = parser.parse_args()
@@ -31,35 +102,11 @@ if __name__ == '__main__':
     if config_data['ligand'][0] != '/':
         config_data['ligand'] = Path(args.config).parent.joinpath(config_data['ligand'])
 
-    # prepare the protein directory. Protein-ligand complex must exist.
-    current_dir = Path(__file__)
-    surfdock_dir = current_dir.parent.parent.parent
-
-    data_dir= Path(f'{surfdock_dir}/data/Screen_sample_dirs/easydock_samples')
-    if not data_dir.is_dir():
-        data_dir.mkdir(parents=True, exist_ok=True)
-    
     protein_fname = Path(os.path.expanduser(os.path.expandvars(config_data['protein'])))
-    if not protein_fname.is_file():
-        raise TypeError('protein fname does not exist')
-
-    if protein_fname.suffix != '.pdb':
-        raise TypeError('protein need to be in PDB format')
-    
-    protein_surfdock_dir = Path(data_dir).joinpath(protein_fname.stem)
-    protein_surfdock_dir.mkdir(parents=True, exist_ok=True)
-
-    shutil.copyfile(str(protein_fname), str(protein_surfdock_dir / protein_fname.stem) + '_protein_processed.pdb')
-
     ligand_fname = Path(os.path.expanduser(os.path.expandvars(config_data['ligand'])))
-    if not ligand_fname.is_file():
-        raise TypeError('ligand fname does not exist')
-
-    if ligand_fname.suffix != '.sdf':
-        raise TypeError('ligand need to be in SDF format')
-
-    shutil.copyfile(str(ligand_fname), str(protein_surfdock_dir / protein_fname.stem) + '_ligand.sdf')
-
+    prepare_protein_ligand_for_surfdock(protein_fname=protein_fname,
+                                        ligand_fname=ligand_fname)
+    
     if config_data['processing_unit'] == 'gpu':
         script_fname = str(Path(__file__).parent.joinpath('screen_pipeline.sh'))
     elif config_data['processing_unit'] == 'cpu':
@@ -67,10 +114,35 @@ if __name__ == '__main__':
     else:
         raise ValueError('config value for processing unit must be either "cpu" or "gpu" (case sensitive)')
     
+    n_gen_pose = DEFAULT_NPOSE_DOCKING
+    if 'n_gen_poses' in config_data:
+        if not isinstance(config_data['n_gen_poses'], int):
+            print('npose config is not an integer, ignoring the input and setting up default to 40')
+        else:
+            n_gen_pose = config_data['n_gen_poses']
+
+    n_save_pose = DEFAULT_NPOSE_DOCKING
+    if 'n_save_poses' in config_data:
+        if not isinstance(config_data['n_save_poses'], int):
+            print('npose config is not an integer, ignoring the input and setting up default to 40')
+        else:
+            n_save_pose = config_data['n_save_poses']
+
+    if n_save_pose > n_gen_pose:
+        print('n_save_poses is larger than n_gen_poses. Reconfigure n_save_poses = n_gen_poses')
+        n_save_pose = n_gen_pose
+
+    n_gen_pose = str(n_gen_pose) #subprocess requires to stringify everything
+    n_save_pose = str(n_save_pose) #subprocess requires to stringify everything
+
     cmd = [
     script_fname,
     args.input,
-    args.output
+    args.output,
+    n_gen_pose,
+    n_save_pose
     ]
 
     subprocess.run(' '.join(cmd), shell=True)
+
+    analyse_output(args.output)
