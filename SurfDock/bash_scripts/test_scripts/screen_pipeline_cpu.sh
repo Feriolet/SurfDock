@@ -18,14 +18,14 @@ SurfDockdir="$(dirname "$(dirname "$(dirname "$path")")")"
 SurfDockdir=${SurfDockdir}
 echo SurfDockdir : ${SurfDockdir}
 
-temp="$(dirname "$(dirname "$(dirname "$(dirname "$path")")")")"
+temp=$4
 model_temp="$(dirname "$(dirname "$(dirname "$path")")")"
-
+precomputed_dir="$(dirname $model_temp)"
 #------------------------------------------------------------------------------------------------#
 #------------------------------------ Step1 : Setup Params --------------------------------------#
 #------------------------------------------------------------------------------------------------#
 
-export precomputed_arrays="${temp}/precomputed/precomputed_arrays"
+export precomputed_arrays="${precomputed_dir}/precomputed/precomputed_arrays"
 ## Please set the GPU devices you want to use
 gpu_string="cpu"
 echo "Using CPU device"
@@ -47,7 +47,7 @@ esmbedding_dir=${temp}/Screen_result/processed_data/${project_name}/test_samples
 ## Please set the path to the Screen ligand library file
 Screen_lib_path=$1
 ## Please set the path to the docking result directory
-docking_out_dir=$2
+docking_out_dir=${temp}/docking_result
 #------------------------------------------------------------------------------------------------#
 # -----------------------Step1 : Processed Target Structure -------------------------------------#
 #----------------(Set target_have_processed as true if you have done with your pipeline)---------#
@@ -160,8 +160,8 @@ ${SurfDockdir}/inference_accelerate.py \
 --out_dir ${docking_out_dir} \
 --batch_size 400 \
 --batch_size_molecule 10 \
---samples_per_complex $3 \
---save_docking_result_number $4 \
+--samples_per_complex $2 \
+--save_docking_result_number $3 \
 --head_index  0 \
 --tail_index 10000 \
 --inference_mode Screen \

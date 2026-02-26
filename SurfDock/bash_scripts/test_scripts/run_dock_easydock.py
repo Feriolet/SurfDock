@@ -7,6 +7,8 @@ import yaml
 import pandas as pd
 import rdkit
 from rdkit import Chem
+import tempfile
+
 
 def filepath_type(x):
     if x:
@@ -14,12 +16,9 @@ def filepath_type(x):
     else:
         return x
 
-def prepare_protein_ligand_for_surfdock(protein_fname: str, ligand_fname: str) -> None:
+def prepare_protein_ligand_for_surfdock(tempdir: str, protein_fname: str, ligand_fname: str) -> str:
 
-    current_dir = Path(__file__)
-    surfdock_dir = current_dir.parent.parent.parent
-
-    data_dir= Path(f'{surfdock_dir}/data/Screen_sample_dirs/easydock_samples')
+    data_dir= Path(f'{tempdir}/data/Screen_sample_dirs/easydock_samples')
     if not data_dir.is_dir():
         data_dir.mkdir(parents=True, exist_ok=True)
 
@@ -60,9 +59,9 @@ def parse_surfdock_mol_df(mol_series: pd.Series) -> Chem.Mol:
     return mol
 
 
-def analyse_output(output_folder: str) -> None:
+def analyse_output(tempdir: str, output_fname: str) -> None:
 
-    output_path = Path(output_folder)
+    output_path = Path(tempdir) / 'docking_result'
     output_csv_fname = output_path.joinpath(OUTPUT_CSV_FNAME)
 
     if not output_csv_fname.is_file():
@@ -75,7 +74,7 @@ def analyse_output(output_folder: str) -> None:
     for mol_name_key, df_by_mol_name in surfdock_output_df_grouped:
         mol_l += list(df_by_mol_name.sort_values(by=['pose_rank']).apply(parse_surfdock_mol_df, axis=1))
     
-    with Chem.SDWriter(str(output_path.joinpath('easydock_output.sdf'))) as w:
+    with Chem.SDWriter(str(output_path.joinpath(output_fname))) as w:
         for m in mol_l:
             w.write(m)
 
@@ -90,9 +89,15 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--config', metavar='FILENAME', required=True, type=filepath_type,
                         help='YAML file with parameters used by docking program. See documentation for the format.')
     parser.add_argument('-o', '--output', metavar='FILENAME', required=True, type=filepath_type,
-                        help='output folder for SurfDock')
+                        help='output SDF file for SurfDock')
     
     args = parser.parse_args()
+
+    if Path(args.input).suffix != '.sdf':
+        raise ValueError('input molecules should be in SDF file')
+
+    if Path(args.output).suffix != '.sdf':
+        raise ValueError('output molecules should be in SDF file')
 
     with open(args.config, 'r') as f:
         config_data = yaml.load(f, Loader=yaml.SafeLoader)
@@ -102,11 +107,7 @@ if __name__ == '__main__':
     if config_data['ligand'][0] != '/':
         config_data['ligand'] = Path(args.config).parent.joinpath(config_data['ligand'])
 
-    protein_fname = Path(os.path.expanduser(os.path.expandvars(config_data['protein'])))
-    ligand_fname = Path(os.path.expanduser(os.path.expandvars(config_data['ligand'])))
-    prepare_protein_ligand_for_surfdock(protein_fname=protein_fname,
-                                        ligand_fname=ligand_fname)
-    
+
     if config_data['processing_unit'] == 'gpu':
         script_fname = str(Path(__file__).parent.joinpath('screen_pipeline.sh'))
     elif config_data['processing_unit'] == 'cpu':
@@ -135,14 +136,30 @@ if __name__ == '__main__':
     n_gen_pose = str(n_gen_pose) #subprocess requires to stringify everything
     n_save_pose = str(n_save_pose) #subprocess requires to stringify everything
 
-    cmd = [
-    script_fname,
-    args.input,
-    args.output,
-    n_gen_pose,
-    n_save_pose
-    ]
+    protein_fname = Path(os.path.expanduser(os.path.expandvars(config_data['protein'])))
+    ligand_fname = Path(os.path.expanduser(os.path.expandvars(config_data['ligand'])))
 
-    subprocess.run(' '.join(cmd), shell=True)
+    tmpdir = None
+    if 'tempdir' in config_data:
+        if config_data['protein'][0] != '/':
+            tmpdir = Path(args.config).parent.joinpath(config_data['tempdir'])
+        else:
+            tmpdir = config_data['tempdir']
+        
+        if not Path(tmpdir).is_dir():
+            Path(tmpdir).mkdir()
+    
+    with tempfile.TemporaryDirectory(dir=tmpdir) as easydock_dir:
+        prepare_protein_ligand_for_surfdock(tempdir=easydock_dir,
+                                            protein_fname=protein_fname,
+                                            ligand_fname=ligand_fname)
+        cmd = [
+        script_fname,
+        args.input,
+        n_gen_pose,
+        n_save_pose,
+        easydock_dir
+        ]
 
-    analyse_output(args.output)
+        subprocess.run(' '.join(cmd), shell=True)
+        analyse_output(easydock_dir, args.output)
