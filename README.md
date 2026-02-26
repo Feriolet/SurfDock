@@ -52,7 +52,6 @@ torchvision==0.22.0+cu128
 git clone https://github.com/Feriolet/SurfDock
 cd SurfDock
 docker build --no-cache --platform linux/amd64 -t docker_surfdock .
-docker run --platform linux/amd64 --rm -it docker_surfdock
 ```
 
 ### Usage
@@ -72,8 +71,11 @@ options:
 ### Running the docking example
 ```bash
 cd /app/SurfDock/docker_example
-
-python ../SurfDock/bash_scripts/test_scripts/run_dock_easydock.py -i 1a0q_docking_lib.sdf -c config.yaml -o output.sdf
+docker run --rm --platform linux/amd64 \
+     -v $(pwd):/app/docker_example docker_surfdock \
+     -i /app/docker_example/1a0q_docking_lib.sdf \
+     -c /app/docker_example/config.yaml \
+     -o /app/docker_example/output.sdf
 ```
 
 where config.yaml consists of:
@@ -87,7 +89,6 @@ n_save_poses: 10 # number of poses saved
 tempdir: temp_surfdock # temporary directory to store intermediate file. Allows folders that has not existed, but not nested directories.
 ```
 
-The summary output can be viewed in [output]/easydock_output.sdf files (to be updated)
 ## Section 1 : Setup Environment
 You can follow the instructions to setup the environment
 Our test env Info bellow
