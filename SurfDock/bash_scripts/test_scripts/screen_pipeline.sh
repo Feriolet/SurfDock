@@ -42,7 +42,7 @@ target_have_processed=${target_have_processed:-false}
 ## Please set the path to save the surface file and pocket file
 surface_out_dir=${temp}/Screen_result/processed_data/${project_name}/easydock_surface
 ## Please set the path to the input data
-data_dir=${SurfDockdir}/data/Screen_sample_dirs/easydock_samples
+data_dir=${temp}/data/Screen_sample_dirs/easydock_samples
 ## Please set the path to the output csv file
 out_csv_dir=${temp}/Screen_result/processed_data/${project_name}/input_csv_files/
 out_csv_file=${out_csv_dir}/easydock_samples.csv
