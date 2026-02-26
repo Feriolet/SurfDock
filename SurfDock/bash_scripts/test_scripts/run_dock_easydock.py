@@ -141,8 +141,8 @@ if __name__ == '__main__':
 
     tmpdir = None
     if 'tempdir' in config_data:
-        if config_data['protein'][0] != '/':
-            tmpdir = Path(args.config).parent.joinpath(config_data['tempdir'])
+        if config_data['tempdir'][0] != '/':
+            tmpdir = str(Path(args.config).parent.joinpath(config_data['tempdir']))
         else:
             tmpdir = config_data['tempdir']
         
