@@ -21,8 +21,9 @@ ADD SurfDock/comp_surface/tools/msms_i86_64Linux2_2.6.1.tar.gz /app/SurfDock/Sur
 WORKDIR /app/SurfDock/SurfDock
 RUN git clone https://github.com/facebookresearch/esm
 ENV precomputed_arrays=/app/SurfDock/precomputed/precomputed_arrays
-RUN conda run --no-capture-output -n SurfDock python -c "from utils import torus"
+ENV KMP_AFFINITY=disabled
+RUN conda run --no-capture-output -n SurfDock python -c "from utils import so3, torus"
 
 WORKDIR /app/SurfDock
-ENV KMP_AFFINITY=disabled
+
 CMD [ "/bin/bash" ]
