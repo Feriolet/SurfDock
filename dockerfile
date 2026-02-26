@@ -26,4 +26,7 @@ RUN conda run --no-capture-output -n SurfDock python -c "from utils import so3, 
 
 WORKDIR /app/SurfDock
 
-CMD [ "/bin/bash" ]
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
