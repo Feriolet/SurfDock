@@ -49,7 +49,7 @@ options:
 
 ### Running the docking example
 ```bash
-cd /app/SurfDock/docker_example
+cd docker_example
 docker run --rm --platform linux/amd64 \
      -v $(pwd):/app/docker_example docker_surfdock \
      -i /app/docker_example/1a0q_docking_lib.sdf \
