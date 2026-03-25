@@ -18,12 +18,14 @@ SurfDockdir="$(dirname "$(dirname "$(dirname "$path")")")"
 SurfDockdir=${SurfDockdir}
 echo SurfDockdir : ${SurfDockdir}
 
-temp=$4
+temp="$(dirname "$(dirname "$(dirname "$(dirname "$path")")")")"
 model_temp="$(dirname "$(dirname "$(dirname "$path")")")"
-precomputed_dir="$(dirname $model_temp)"
+
 #------------------------------------------------------------------------------------------------#
 #------------------------------------ Step1 : Setup Params --------------------------------------#
 #------------------------------------------------------------------------------------------------#
+
+echo "$(date +"%Y-%m-%d %H:%M:%S")"
 
 export precomputed_arrays="${precomputed_dir}/precomputed/precomputed_arrays"
 ## Please set the GPU devices you want to use
@@ -38,7 +40,7 @@ target_have_processed=${target_have_processed:-false}
 ## Please set the path to save the surface file and pocket file
 surface_out_dir=${temp}/Screen_result/processed_data/${project_name}/easydock_surface
 ## Please set the path to the input data
-data_dir=${temp}/data/Screen_sample_dirs/easydock_samples
+data_dir=${SurfDockdir}/data/Screen_sample_dirs/easydock_samples
 ## Please set the path to the output csv file
 out_csv_dir=${temp}/Screen_result/processed_data/${project_name}/input_csv_files/
 out_csv_file=${out_csv_dir}/easydock_samples.csv
@@ -47,11 +49,14 @@ esmbedding_dir=${temp}/Screen_result/processed_data/${project_name}/test_samples
 ## Please set the path to the Screen ligand library file
 Screen_lib_path=$1
 ## Please set the path to the docking result directory
-docking_out_dir=${temp}/docking_result
+docking_out_dir=$2
 #------------------------------------------------------------------------------------------------#
 # -----------------------Step1 : Processed Target Structure -------------------------------------#
 #----------------(Set target_have_processed as true if you have done with your pipeline)---------#
 #------------------------------------------------------------------------------------------------#
+
+echo "$(date +"%Y-%m-%d %H:%M:%S")"
+
 mkdir -p $surface_out_dir
 if [ "$target_have_processed" = true ]; then
   echo "Target structure has been processed, skipping this step."
@@ -68,6 +73,9 @@ fi
 #------------------------------------------------------------------------------------------------#
 #----------------------------- Step2 : Compute Target Surface -----------------------------------#
 #------------------------------------------------------------------------------------------------#
+
+echo "$(date +"%Y-%m-%d %H:%M:%S")"
+
 cd $surface_out_dir
 command=`
 python ${SurfDockdir}/comp_surface/prepare_target/computeTargetMesh_test_samples.py \
@@ -79,6 +87,8 @@ state=$command
 #------------------------------------------------------------------------------------------------#
 #--------------------------------  Step3 : Get Input CSV File -----------------------------------#
 #------------------------------------------------------------------------------------------------#
+
+echo "$(date +"%Y-%m-%d %H:%M:%S")"
 
 command=` python \
 ${SurfDockdir}/inference_utils/construct_csv_input.py \
@@ -92,6 +102,8 @@ state=$command
 #------------------------------------------------------------------------------------------------#
 #--------------------------------  Step4 : Get Pocket ESM Embedding  ----------------------------#
 #------------------------------------------------------------------------------------------------#
+
+echo "$(date +"%Y-%m-%d %H:%M:%S")"
 
 esm_dir=${SurfDockdir}/esm
 sequence_out_file="${esmbedding_dir}/test_samples.fasta"
@@ -133,6 +145,8 @@ state=$command
 #------------------------  Step5 : Start Sampling Ligand Confromers  ----------------------------#
 #------------------------------------------------------------------------------------------------#
 
+echo "$(date +"%Y-%m-%d %H:%M:%S")"
+
 diffusion_model_dir=${model_temp}/model_weights/docking
 confidence_model_base_dir=${model_temp}/model_weights/posepredict
 protein_embedding=${pocket_emb_save_to_single_file}
@@ -160,8 +174,8 @@ ${SurfDockdir}/inference_accelerate.py \
 --out_dir ${docking_out_dir} \
 --batch_size 400 \
 --batch_size_molecule 10 \
---samples_per_complex $2 \
---save_docking_result_number $3 \
+--samples_per_complex 3 \ #cpu compute quite slow, will adjust at final
+--save_docking_result_number 3 \ #cpu compute quite slow, will adjust at final
 --head_index  0 \
 --tail_index 10000 \
 --inference_mode Screen \
