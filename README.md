@@ -13,7 +13,7 @@ Hi! This forked repository is made to create a docker for SurfDock. Please let m
 System Specification
 
 OS: MacOS M1 (14.6.1)
-Last Tested: 26 February 2026
+Last Tested: 26 March 2026
 
 Torch and GPU-Related Information
 
