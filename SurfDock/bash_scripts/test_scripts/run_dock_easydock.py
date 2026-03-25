@@ -59,9 +59,9 @@ def parse_surfdock_mol_df(mol_series: pd.Series) -> Chem.Mol:
     return mol
 
 
-def analyse_output(tempdir: str, output_fname: str) -> None:
+def analyse_output(tempdir: str, output_fname: str, npose: int) -> None:
 
-    output_path = Path(tempdir) / 'docking_result'
+    output_path = Path(tempdir)
     output_csv_fname = output_path.joinpath(OUTPUT_CSV_FNAME)
 
     if not output_csv_fname.is_file():
@@ -72,7 +72,12 @@ def analyse_output(tempdir: str, output_fname: str) -> None:
     
     mol_l = []
     for mol_name_key, df_by_mol_name in surfdock_output_df_grouped:
-        mol_l += list(df_by_mol_name.sort_values(by=['pose_rank']).apply(parse_surfdock_mol_df, axis=1))
+        ranked_mols = list(df_by_mol_name.sort_values(by=['pose_rank']).apply(parse_surfdock_mol_df, axis=1))
+
+        if len(ranked_mols) > npose:
+            ranked_mols = ranked_mols[:npose]
+
+        mol_l.extend(ranked_mols)
     
     with Chem.SDWriter(str(output_path.joinpath(output_fname))) as w:
         for m in mol_l:
@@ -139,27 +144,39 @@ if __name__ == '__main__':
     protein_fname = Path(os.path.expanduser(os.path.expandvars(config_data['protein'])))
     ligand_fname = Path(os.path.expanduser(os.path.expandvars(config_data['ligand'])))
 
-    tmpdir = None
-    if 'tempdir' in config_data:
-        if config_data['tempdir'][0] != '/':
-            tmpdir = str(Path(args.config).parent.joinpath(config_data['tempdir']))
-        else:
-            tmpdir = config_data['tempdir']
-        
-        if not Path(tmpdir).is_dir():
-            Path(tmpdir).mkdir()
     
-    with tempfile.TemporaryDirectory(dir=tmpdir) as easydock_dir:
-        prepare_protein_ligand_for_surfdock(tempdir=easydock_dir,
-                                            protein_fname=protein_fname,
-                                            ligand_fname=ligand_fname)
-        cmd = [
-        script_fname,
-        args.input,
-        n_gen_pose,
-        n_save_pose,
-        easydock_dir
-        ]
+    processing_dir = '/app/SurfDock/SurfDock'
+    prepare_protein_ligand_for_surfdock(tempdir=processing_dir,
+                                        protein_fname=protein_fname,
+                                        ligand_fname=ligand_fname)
+    cmd = [
+    script_fname,
+    args.input,
+    processing_dir
+    ]
 
-        subprocess.run(' '.join(cmd), shell=True)
-        analyse_output(easydock_dir, args.output)
+    subprocess.run(' '.join(cmd), shell=True)
+    analyse_output(processing_dir, args.output, int(n_save_pose))
+    
+    # tmpdir = None
+    # if 'tempdir' in config_data:
+    #     if config_data['tempdir'][0] != '/':
+    #         tmpdir = str(Path(args.config).parent.joinpath(config_data['tempdir']))
+    #     else:
+    #         tmpdir = config_data['tempdir']
+        
+    #     if not Path(tmpdir).is_dir():
+    #         Path(tmpdir).mkdir()
+
+    # with tempfile.TemporaryDirectory(dir=tmpdir) as easydock_dir:
+    #     prepare_protein_ligand_for_surfdock(tempdir=easydock_dir,
+    #                                         protein_fname=protein_fname,
+    #                                         ligand_fname=ligand_fname)
+    #     cmd = [
+    #     script_fname,
+    #     args.input,
+    #     easydock_dir
+    #     ]
+
+    #     subprocess.run(' '.join(cmd), shell=True)
+    #     analyse_output(easydock_dir, args.output)
