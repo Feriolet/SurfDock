@@ -10,9 +10,7 @@ cat << 'EOF'
                                                                                                        
   ____  _     _ _   _ _   _ ____  _     _____ ____  _   _ ____  _     _     ____  _     ____  _        _ 
 EOF
-   
-echo "$(date +"%Y-%m-%d %H:%M:%S")"
-
+                                                                                                       
 # This script is used to run SurfDock on test samples
 source /opt/conda/bin/activate SurfDock
 path=$(readlink -f "$0")
@@ -29,20 +27,15 @@ model_temp="$(dirname "$(dirname "$(dirname "$path")")")"
 
 echo "$(date +"%Y-%m-%d %H:%M:%S")"
 
-export precomputed_arrays="${temp}/precomputed/precomputed_arrays"
+export precomputed_arrays="${precomputed_dir}/precomputed/precomputed_arrays"
 ## Please set the GPU devices you want to use
-gpu_string=$(nvidia-smi --query-gpu=index --format=csv,noheader | paste -sd, -)
-echo "Using GPU devices: ${gpu_string}"
-IFS=',' read -ra gpu_array <<< "$gpu_string"
-NUM_GPUS=${#gpu_array[@]}
-export CUDA_VISIBLE_DEVICES=${gpu_string}
-## Please set the main Parameters
-main_process_port=2957${gpu_array[-1]}
+gpu_string="cpu"
+echo "Using CPU device"
+
 ## Please set the project name
 project_name='SurfDock_easydock'
 # /home/caoduanhua/NM_submit_code/SurfDock
-# Set default value for target_have_processed if not already set
-target_have_processed=${target_have_processed:-false}
+
 ## Please set the path to save the surface file and pocket file
 surface_out_dir=${temp}/Screen_result/processed_data/${project_name}/easydock_surface
 ## Please set the path to the input data
@@ -56,102 +49,14 @@ esmbedding_dir=${temp}/Screen_result/processed_data/${project_name}/test_samples
 Screen_lib_path=$1
 ## Please set the path to the docking result directory
 docking_out_dir=$2
-#------------------------------------------------------------------------------------------------#
-# -----------------------Step1 : Processed Target Structure -------------------------------------#
-#----------------(Set target_have_processed as true if you have done with your pipeline)---------#
-#------------------------------------------------------------------------------------------------#
-
-echo "$(date +"%Y-%m-%d %H:%M:%S")"
-
-mkdir -p $surface_out_dir
-if [ "$target_have_processed" = true ]; then
-  echo "Target structure has been processed, skipping this step."
-else
-  echo "Processing target structure with OpenBabel..."
-  export BABEL_LIBDIR=/opt/conda/envs/SurfDock/lib/openbabel/3.1.0/
-  command=`
-  python ${SurfDockdir}/comp_surface/protein_process/openbabel_reduce_openbabel.py \
-  --data_path ${data_dir} \
-  --save_path ${surface_out_dir}`
-  state=$command
-fi
-
-#------------------------------------------------------------------------------------------------#
-#----------------------------- Step2 : Compute Target Surface -----------------------------------#
-#------------------------------------------------------------------------------------------------#
-
-echo "$(date +"%Y-%m-%d %H:%M:%S")"
-
-cd $surface_out_dir
-command=`
-python ${SurfDockdir}/comp_surface/prepare_target/computeTargetMesh_test_samples.py \
---data_dir ${data_dir} \
---out_dir ${surface_out_dir} \
-`
-state=$command
-
-#------------------------------------------------------------------------------------------------#
-#--------------------------------  Step3 : Get Input CSV File -----------------------------------#
-#------------------------------------------------------------------------------------------------#
-
-echo "$(date +"%Y-%m-%d %H:%M:%S")"
-
-command=` python \
-${SurfDockdir}/inference_utils/construct_csv_input.py \
---data_dir ${data_dir} \
---surface_out_dir ${surface_out_dir} \
---output_csv_file ${out_csv_file} \
---Screen_ligand_library_file ${Screen_lib_path} \
-`
-state=$command
-
-#------------------------------------------------------------------------------------------------#
-#--------------------------------  Step4 : Get Pocket ESM Embedding  ----------------------------#
-#------------------------------------------------------------------------------------------------#
-
-echo "$(date +"%Y-%m-%d %H:%M:%S")"
-
-esm_dir=${SurfDockdir}/esm
-sequence_out_file="${esmbedding_dir}/test_samples.fasta"
-protein_pocket_csv=${out_csv_file}
-full_protein_esm_embedding_dir="${esmbedding_dir}/esm_embedding_output"
-pocket_emb_save_dir="${esmbedding_dir}/esm_embedding_pocket_output"
-pocket_emb_save_to_single_file="${esmbedding_dir}/esm_embedding_pocket_output_for_train/esm2_3billion_pdbbind_embeddings.pt"
-# get faste  sequence
-command=`python ${SurfDockdir}/datasets/esm_embedding_preparation.py \
---out_file ${sequence_out_file} \
---protein_ligand_csv ${protein_pocket_csv}`
-state=$command
-# esm embedding preprateion
-
-command=`python ${esm_dir}/scripts/extract.py \
-"esm2_t33_650M_UR50D" \
-${sequence_out_file} \
-${full_protein_esm_embedding_dir} \
---repr_layers 33 \
---include "per_tok" \
---truncation_seq_length 4096`
-state=$command
-
-
-# map pocket esm embedding
-command=`python ${SurfDockdir}/datasets/get_pocket_embedding.py \
---protein_pocket_csv ${protein_pocket_csv} \
---embeddings_dir ${full_protein_esm_embedding_dir} \
---pocket_emb_save_dir ${pocket_emb_save_dir}`
-state=$command
-
-# save pocket esm embedding to single file 
-command=`python ${SurfDockdir}/datasets/esm_pocket_embeddings_to_pt.py \
---esm_embeddings_path ${pocket_emb_save_dir} \
---output_path ${pocket_emb_save_to_single_file}`
-state=$command
 
 #------------------------------------------------------------------------------------------------#
 #------------------------  Step5 : Start Sampling Ligand Confromers  ----------------------------#
 #------------------------------------------------------------------------------------------------#
 
 echo "$(date +"%Y-%m-%d %H:%M:%S")"
+pocket_emb_save_dir="${esmbedding_dir}/esm_embedding_pocket_output"
+pocket_emb_save_to_single_file="${esmbedding_dir}/esm_embedding_pocket_output_for_train/esm2_3billion_pdbbind_embeddings.pt"
 
 diffusion_model_dir=${model_temp}/model_weights/docking
 confidence_model_base_dir=${model_temp}/model_weights/posepredict
@@ -165,10 +70,7 @@ for i in ${dist_arrays[@]}
 do
 mdn_dist_threshold_test=${i}
 
-command=`accelerate launch \
---multi_gpu \
---main_process_port ${main_process_port} \
---num_processes ${NUM_GPUS} \
+command=`python \
 ${SurfDockdir}/inference_accelerate.py \
 --data_csv ${test_data_csv} \
 --model_dir ${diffusion_model_dir} \
@@ -183,8 +85,8 @@ ${SurfDockdir}/inference_accelerate.py \
 --out_dir ${docking_out_dir} \
 --batch_size 400 \
 --batch_size_molecule 10 \
---samples_per_complex 40 \
---save_docking_result_number 40 \
+--samples_per_complex 3 \
+--save_docking_result_number 3 \
 --head_index  0 \
 --tail_index 10000 \
 --inference_mode Screen \
@@ -199,12 +101,9 @@ echo '---------------- Step4 : Start Rescoring the Pose For Screening  ---------
 
 # surface_out_dir=${SurfDockdir}/data/Screen_sample_dirs/${project_name}/test_samples_8A_surface
 # data_dir=${SurfDockdir}/data/Screen_sample_dirs/test_samples
-
-echo "$(date +"%Y-%m-%d %H:%M:%S")"
-
 out_csv_file=${out_csv_dir}/score_inplace.csv
 
-command=` python \
+command=`accelerate launch \
 ${SurfDockdir}/inference_utils/construct_csv_input.py \
 --data_dir ${data_dir} \
 --surface_out_dir ${surface_out_dir} \
@@ -227,9 +126,6 @@ mdn_dist_threshold_test=${i}
 echo mdn_dist_threshold_test : ${mdn_dist_threshold_test}
 
 command=`accelerate launch \
---multi_gpu \
---main_process_port ${main_process_port} \
---num_processes 1 \
 ${SurfDockdir}/evaluate_score_in_place.py \
 --data_csv ${test_data_csv} \
 --confidence_model_dir ${confidence_model_base_dir} \

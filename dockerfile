@@ -23,6 +23,7 @@ RUN git clone https://github.com/facebookresearch/esm
 ENV precomputed_arrays=/app/SurfDock/precomputed/precomputed_arrays
 ENV KMP_AFFINITY=disabled
 RUN conda run --no-capture-output -n SurfDock python -c "from utils import so3, torus"
+RUN conda run --no-capture-output -n SurfDock python -c "from esm import pretrained; pretrained.load_model_and_alphabet('esm2_t33_650M_UR50D')"
 
 WORKDIR /app/SurfDock
 

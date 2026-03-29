@@ -119,9 +119,9 @@ if __name__ == '__main__':
 
 
     if config_data['processing_unit'] == 'gpu':
-        script_fname = str(Path(__file__).parent.joinpath('screen_pipeline.sh'))
+        script_fname = str(Path(__file__).parent.joinpath('dock.sh'))
     elif config_data['processing_unit'] == 'cpu':
-        script_fname = str(Path(__file__).parent.joinpath('screen_pipeline_cpu.sh'))
+        script_fname = str(Path(__file__).parent.joinpath('dock_cpu.sh'))
     else:
         raise ValueError('config value for processing unit must be either "cpu" or "gpu" (case sensitive)')
     
@@ -159,10 +159,22 @@ if __name__ == '__main__':
         if not Path(tmpdir).is_dir():
             Path(tmpdir).mkdir()
 
+    init_script_fname = str(Path(__file__).parent.joinpath('init.sh'))
+
     with tempfile.TemporaryDirectory(dir=tmpdir) as easydock_dir:
         prepare_protein_ligand_for_surfdock(processing_dir='/app/SurfDock/SurfDock',
                                             protein_fname=protein_fname,
                                             ligand_fname=ligand_fname)
+        
+        #init
+        init_cmd = [
+        init_script_fname,
+        args.input
+        ]
+
+        subprocess.run(' '.join(init_cmd), shell=True)
+
+        #dock
         cmd = [
         script_fname,
         args.input,
