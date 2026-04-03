@@ -27,7 +27,7 @@ model_temp="$(dirname "$(dirname "$(dirname "$path")")")"
 
 echo "$(date +"%Y-%m-%d %H:%M:%S")"
 
-export precomputed_arrays="${precomputed_dir}/precomputed/precomputed_arrays"
+export precomputed_arrays="${temp}/precomputed/precomputed_arrays"
 ## Please set the GPU devices you want to use
 gpu_string="cpu"
 echo "Using CPU device"
